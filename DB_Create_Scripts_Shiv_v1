@@ -1,0 +1,46 @@
+Create scripts for DB
+set timezone ='America/New_York';
+
+drop table if exists public.t_pixel;
+drop table if exists public.t_band_info;
+drop table if exists public.t_raster;
+drop table if exists public.t_site;
+
+create table t_site(
+site_id serial CONSTRAINT t_site_pk PRIMARY KEY,
+latitude double precision not null,
+longitude double precision not null,
+site_name text,
+source text,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+commit;
+
+create table t_raster(
+raster_id serial CONSTRAINT t_raster_pk PRIMARY KEY,
+site_id integer REFERENCES public.t_site(site_id) ON DELETE CASCADE,
+site_rast raster,
+resolution text,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+commit;
+create table t_band_info(
+band_id integer CONSTRAINT t_band_info_pk PRIMARY KEY,
+band_desc text,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+commit;
+create table t_pixel(
+raster_id integer REFERENCES public.t_raster(raster_id) ON DELETE CASCADE,
+pixel_x_id integer,
+pixel_y_id integer,
+band_id integer REFERENCES public.t_band_info(band_id) ON DELETE CASCADE,
+band_value integer,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null,
+CONSTRAINT t_pixel_pk PRIMARY KEY(raster_id, pixel_x_id, pixel_y_id,band_id)
+);
+commit;
