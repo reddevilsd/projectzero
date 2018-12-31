@@ -1,0 +1,91 @@
+#!/usr/bin/python
+"""
+Created on Thu Dec 27 13:37:32 2018
+@author: Ziyi Gong, Samuel Konat
+Version: python 3.6
+"""
+
+import psycopg2
+from math import *
+from osgeo import gdal
+import os
+
+R = 6371        # Radius of the Earth
+D = 50          # Length of one a side of gridded region in kilometers
+
+# Database details
+dbhost = "localhost"
+dbname = "postgres"
+dbuser = "postgres"
+dbpass = ""
+dbconn = None
+
+'''
+Parameters:
+    latitude, longitude: coordinates of a point in MRDS data
+    length: the length of the square enclosing the point
+    
+    Returns minx, miny, maxx, and maxy coordinates of the square
+'''
+def vertices(latitude, longitude, length):
+    # latitude to radians
+    r_lat = latitude * pi / 180
+    
+    a = float(length) / (4 * R)
+    diff_long = asin(sin(a) / cos(r_lat)) * 2 * 180 / pi
+    diff_lat = a * 2 * 180 / pi
+    
+    ret = (longitude - diff_long, latitude - diff_lat, 
+            longitude + diff_long, latitude + diff_lat)
+    
+    return ret
+ 
+
+'''
+    Reads raster image files, crops rasters based on coordinates in MRDS and 
+    stores the stored rasters into the database
+'''
+def get_raster_grids():
+    # Connect to the PostgreSQL database server
+    conn = None
+    try:
+        # Establishing database connection
+        conn = psycopg2.connect(host = dbhost, database = dbname,
+                            user = dbuser, password = dbpass)
+        cur = conn.cursor()
+        cur.execute('SELECT latitude, longitude, site_id FROM t_site;')
+        mrds = cur.fetchall()
+        
+        cur.execute('SELECT filename FROM t_raster_master')
+        files = cur.fetchall()
+
+        for fl in files:
+            print('Processing ' + fl[0])
+            fname = fl[0][:-4]
+            dirname = 'clipped/' + fname
+            if not os.path.isdir('clipped'):
+                os.mkdir('clipped')
+            if not os.path.isdir(dirname):
+                os.mkdir(dirname)
+
+            for site in mrds:
+                corners = vertices(site[0], site[1], D);
+                clipd = dirname + '/' + fname + '_' + str(site[2]) + '.tif'
+                ds = gdal.Open('original/' + fl[0])
+                gdal.Warp(clipd, ds, outputBounds = corners)
+                
+            os.system('export PGPASSWORD=; raster2pgsql -a -f site_rast ' +
+                '-F ' + dirname + '/*.tif ' 
+                + 'public.t_raster | psql -U postgres -h localhost >/dev/null')
+ 
+        # close the communication with the PostgreSQL
+        cur.close()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print(error)
+    finally:
+        if conn is not None:
+            conn.close()
+            print('Database connection closed.')
+
+if __name__ == '__main__':
+    get_raster_grids()
