@@ -1,0 +1,66 @@
+--Create scripts for DB
+set timezone ='America/New_York';
+
+drop table if exists public.t_pixel;
+drop table if exists public.t_band_info;
+drop table if exists public.t_raster;
+drop table if exists public.t_site;
+
+create table t_site(
+site_id serial CONSTRAINT t_site_pk PRIMARY KEY,
+latitude double precision not null,
+longitude double precision not null,
+source text,
+commodity_1 varchar(128),
+commodity_2 varchar(128),
+commodity_3 varchar(128),
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+commit;
+
+create table t_raster(
+raster_id serial CONSTRAINT t_raster_pk PRIMARY KEY,
+site_id integer REFERENCES public.t_site(site_id) ON DELETE CASCADE,
+site_rast raster,
+resolution text,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+commit;
+
+create table t_band_info(
+band_id integer CONSTRAINT t_band_info_pk PRIMARY KEY,
+band_desc text,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+commit;
+
+create table t_pixel(
+raster_id integer REFERENCES public.t_raster(raster_id) ON DELETE CASCADE,
+pixel_x_id integer,
+pixel_y_id integer,
+band_id integer REFERENCES public.t_band_info(band_id) ON DELETE CASCADE,
+band_value integer,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null,
+CONSTRAINT t_pixel_pk PRIMARY KEY(raster_id, pixel_x_id, pixel_y_id,band_id)
+);
+commit;
+
+
+--Insert Data in t_band_info
+insert into public.t_band_info(band_id, band_desc)
+values
+(1,'Aeromagnetic'),(2,'Radiometric_Thorium'),(3,'Radiometric_Potassium'),(4,'Radiometric_Uranium'),
+(5,'DEM(Digital Elevation Model)');
+select * from t_band_info;
+
+--Update empty site_id in t_raster
+--update public.t_raster as r set
+  --  site_id = c.site_id
+--from (select distinct site_id from public.t_site ) as c(site_id) 
+--where c.site_id = cast(left(right(r.filename,5),1)as integer) and r.site_id is null;
+
+update public.t_raster as r set site_id = cast(left(right(r.filename,5),1)as integer) where r.site_id is null;
