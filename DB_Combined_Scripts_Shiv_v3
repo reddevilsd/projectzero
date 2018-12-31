@@ -1,0 +1,59 @@
+--Create scripts for all tables except Master MRDS data
+set timezone ='America/New_York';
+
+drop table if exists public.t_pixel;
+drop table if exists public.t_raster;
+drop table if exists public.t_site;
+
+create table t_site(
+site_id serial CONSTRAINT t_site_pk PRIMARY KEY,
+latitude double precision not null,
+longitude double precision not null,
+source text,
+commodity_1 varchar(128),
+commodity_2 varchar(128),
+commodity_3 varchar(128),
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+
+create table t_raster(
+raster_id serial CONSTRAINT t_raster_pk PRIMARY KEY,
+site_id integer REFERENCES public.t_site(site_id) ON DELETE CASCADE,
+site_rast raster,
+resolution text,
+filename text,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null	
+);
+
+create table t_pixel(
+raster_id integer REFERENCES public.t_raster(raster_id) ON DELETE CASCADE,
+pixel_x_id integer,
+pixel_y_id integer,
+band_value integer,
+crtd_dt TIMESTAMP NOT NULL DEFAULT NOW(),
+updt_dt TIMESTAMP default null,
+CONSTRAINT t_pixel_pk PRIMARY KEY(raster_id, pixel_x_id, pixel_y_id)
+);
+
+--insert data in t_site
+--<done by Sam's script in python>
+
+--insert rasters from raster2pgsql
+raster2pgsql -I -C -a -F -f site_rast -s 4236 -M  *site*.tif  public.t_raster | psql -h 18.223.29.18 -p 5432 -U shiv -d postgres	
+--above command stores ALL tif files in the public.t_raster table in one go
+
+--once t_site has been populated, and rasters have been added to t_raster, link the 2 tables
+update public.t_raster set site_id = cast(substring (filename, '([0-9]+)')as integer) where site_id is null;
+
+--after linking rasters, add data to the t_pixel table
+insert into public.t_pixel(raster_id, pixel_x_id, pixel_y_id, band_value)
+select a.raster_id, a.x, a.y, a.bval
+from(
+select raster_id, x, y, st_value(site_rast, 1, x, y) as bval
+from public.t_raster 
+cross join generate_series(1, 1000) as x cross join generate_series(1,1000) As y
+where raster_id not in (select distinct raster_id from public.t_pixel) and
+x <= st_width(site_rast) and y <= st_height(site_rast)
+order by raster_id) a;
