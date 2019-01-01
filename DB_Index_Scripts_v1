@@ -1,0 +1,19 @@
+--Index for t_raster_master
+create index t_raster_master_FILENAME_ix on public.t_raster_master (filename);
+
+--Indices for t_site
+create index t_site_SITE_ID_COORDS_ix on public.t_site(site_id,latitude,longitude);
+create index t_site_COORDS_ix on public.t_site(latitude,longitude);
+create index t_site_COORDS_CDTY1_ix on public.t_site(latitude,longitude,commodity_1);
+create index t_site_COORDS_CDTY2_ix on public.t_site(latitude,longitude,commodity_2);
+create index t_site_COORDS_CDTY3_ix on public.t_site(latitude,longitude,commodity_3);
+
+--Indices for t_raster
+create index t_raster_RASTER_SITE_ix on public.t_raster(raster_id,site_id);
+create index t_raster_RASTER_SITE_RESOLUTION_ix on public.t_raster(raster_id,site_id,resolution);
+create index t_raster_RASTER_SITE_FILENAME_ix on public.t_raster(raster_id,site_id,filename);
+
+--Indices for t_pixel
+create index t_pixel_RASTERID_PIXELCOORDS_VALUE_ix on public.t_pixel(raster_id,pixel_x_id,pixel_y_id,band_value);
+create index t_pixel_PIXELCOORDS_VALUE_ix on public.t_pixel(pixel_x_id,pixel_y_id,band_value);
+
