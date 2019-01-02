@@ -1,0 +1,34 @@
+This file contains scripts required for DB data validation
+
+1. Identify if any null primary keys exist across any table
+select * from t_raster_master where rid is null;
+select * from t_site where site_id is null;
+select * from t_raster where raster_id is null;
+select * from t_pixel where raster_id is null or pixel_x_id is null or pixel_y_id is null;
+
+2. Check if any pixels are missing values
+select count(distinct raster_id) from t_pixel where band_value is null;
+2a. Identify sites and filenames with missing pixel values
+select raster_id, site_id, filename from t_raster where raster_id in (
+    select distinct raster_id from t_pixel where band_value is null);
+
+3. Check if any rasters are missing filenames(needed to identify geophysical property)
+select raster_id from t_raster where filename is null;
+
+4. Check how many rasters are loaded
+select count(distinct raster_id) from t_raster;
+select count(distinct raster_id) from t_raster where site_rast is null;
+
+5. Count distinct sites that are loaded. These can be validated against the output from python raster clipping scripts
+select count(distinct site_id) from t_site;
+
+6.Check how many rasters are loaded per channel
+select count(distinct raster_id) from t_raster group by filename;
+
+ 
+
+
+
+
+
+
