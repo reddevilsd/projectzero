@@ -1,0 +1,72 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jan 10 11:16:47 2019
+
+@author: Shivalik
+"""
+
+'''
+Script for standardizing and merging Sentinel 1 data
+Step 1:
+    Change the resolution of all original files to 300m resolution
+    
+Step 2:
+    Merge all files with 300m resolution into a single image after cleaning up
+    missing data/no values
+'''
+from osgeo import gdal
+import os
+#Change working dir to where the gdal_merge.py file is stored and import it
+os.chdir('..\Sentinel')
+import gdal_merge as gm
+
+workingdir = os.getcwd()
+
+#Store originals in originalsDir
+originalsDir= '..\Bandx'
+#Store files with modified resolution in ResolutionDir
+ResolutionDir = '..\Bandx_Resolution'
+#Store merged files in MergedDir
+MergedDir = '..\Bandx_Merge'
+
+originalFileNames= os.listdir(originalsDir)
+#originalFileNames
+
+#Step 1: Change resolution of all files to 300m
+os.chdir(originalsDir)
+for file in originalFileNames:
+    inputFile= originalsDir + "\\" + file
+#    print(inputFile)
+    outputFile=ResolutionDir + "\\"+ file[:-4]+"_300m.tiff"
+    print(outputFile)
+#command to change resolution
+#xRes and yRes will change based on desired resolution
+    gdal.Warp(outputFile, inputFile,dstAlpha=True,dstNodata = None,srcNodata=0, dstSRS='EPSG:4326', xRes=0.0035, yRes=0.0035,resampleAlg='bilinear')
+
+
+#Step 2: Merge all files
+inputFiles="" # This goes in final command
+inputList=[] #temp list for storing all filenames
+mergedFile = MergedDir + "\\" + 'Band12_merged_v1.tif' # This goes in final command
+
+os.chdir(ResolutionDir)
+resolFileNames = os.listdir(ResolutionDir)
+for file in resolFileNames :
+    s= ResolutionDir + "\\" + file + ' '
+    inputList.append(s)
+#    print(inputList)
+
+for x in range(0, len(inputList)):
+    inputFiles+=inputList[x]
+#inputFiles
+#len(inputList)
+merge_param=[None]*(3+len(inputList))
+
+merge_param[0]='-n 0 '
+merge_param[1]='-o'
+merge_param[2]=mergedFile
+
+for x in range(3,len(merge_param)):
+    merge_param[x]=inputList[x-3]    
+
+gm.main(merge_param)
